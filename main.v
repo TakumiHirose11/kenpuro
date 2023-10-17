@@ -6,7 +6,7 @@
 // 50MHz clock signal of SPI
 
 /******************************************************************************************/
-module m_main(w_clk, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, led, SW);
+module m_main(w_clk, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, led, SW, fivebuttons);
     input  wire w_clk; // main clock signal (100MHz)
     output wire st7789_SCL;
     inout  wire st7789_SDA;
@@ -14,6 +14,7 @@ module m_main(w_clk, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, led, SW);
     output wire st7789_RES;
     output wire [15:0] led;
     input  wire [15:0]  SW;      // Switch
+    input wire [4:0] fivebuttons; // 5 buttons
   
     wire w_clk_t = w_clk;
     reg [15:0] r_SW=0;
@@ -30,6 +31,7 @@ module m_main(w_clk, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, led, SW);
     reg [15:0] r_st_wdata = 0; // cam_dout;
     always @(posedge w_clk_t) r_st_wadr  <= {r_y, r_x};
     always @(posedge w_clk_t) r_st_we    <= 1; 
+    // この中にif文を作れば状態遷移を画面で表示できる
     always @(posedge w_clk_t) r_st_wdata <= (r_x<30 && r_y<60) ? 16'hffff :
                                             (r_x<r_y) ? 16'b11111100000 : 16'b11111;  
     
@@ -41,7 +43,8 @@ module m_main(w_clk, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, led, SW);
     reg [15:0] r_raddr = 0;
     always @(posedge w_clk_t) r_raddr <= w_raddr;
     always @(posedge w_clk_t) r_rdata <= vmem[r_raddr];    
-    wire [1:0] w_mode = r_SW[1:0];
+    // wire [1:0] w_mode = r_SW[1:0];
+    wire [1:0] w_mode = fivebuttons[1:0];
     m_st7789_disp disp0 (w_clk_t, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, w_raddr, r_rdata, w_mode);                                  
 endmodule
 
