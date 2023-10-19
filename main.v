@@ -21,6 +21,7 @@ module m_main(w_clk, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, led, SW, fiv
     always @(posedge w_clk_t) r_SW <= SW;
     /**********************************************************************************/
     reg [7:0] r_x=0, r_y=0;
+    // xとyの更新 (変えない)
     always @(posedge w_clk_t) begin
         r_x <= (r_x==239) ? 0 : r_x + 1;
         r_y <= (r_y==239) ? 0 : (r_x==239) ? r_y + 1 : r_y;
@@ -32,8 +33,11 @@ module m_main(w_clk, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, led, SW, fiv
     always @(posedge w_clk_t) r_st_wadr  <= {r_y, r_x};
     always @(posedge w_clk_t) r_st_we    <= 1; 
     // この中にif文を作れば状態遷移を画面で表示できる
-    always @(posedge w_clk_t) r_st_wdata <= (r_x<30 && r_y<60) ? 16'hffff :
-                                            (r_x<r_y) ? 16'b11111100000 : 16'b11111;  
+    always @(posedge w_clk_t) begin
+        // 矢印を書く
+        r_st_wdata <= ((r_x>=28 && r_x<=228 && r_y==128) || (r_x>=168 && r_x<=228 && r_y==356-r_x) || (r_x>=168 && r_x<=228 && r_y==r_x-100)) ? 16'hffff : 16'h000 ;
+
+    end
     
     reg [15:0] vmem [0:65535]; // video memory, 256 x 256 (65,536) x 12bit color
     always @(posedge w_clk_t) if(r_st_we) vmem[r_st_wadr] <= r_st_wdata;
@@ -43,8 +47,8 @@ module m_main(w_clk, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, led, SW, fiv
     reg [15:0] r_raddr = 0;
     always @(posedge w_clk_t) r_raddr <= w_raddr;
     always @(posedge w_clk_t) r_rdata <= vmem[r_raddr];    
-    // wire [1:0] w_mode = r_SW[1:0];
-    wire [1:0] w_mode = fivebuttons[1:0];
+    wire [1:0] w_mode = r_SW[1:0];
+    // wire [1:0] w_mode = fivebuttons[1:0];
     m_st7789_disp disp0 (w_clk_t, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, w_raddr, r_rdata, w_mode);                                  
 endmodule
 
