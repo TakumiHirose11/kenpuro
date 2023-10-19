@@ -22,19 +22,25 @@ module m_main(w_clk, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, led, SW, fiv
     /**********************************************************************************/
     
     reg [31:0] counter = 0;
-    reg wait_state = 0;
+    reg [3:0]state = 0;
     // wire [1:0] questions[0:3] = '{2'b00, 2'b01, 2'b10, 2'b11};
     // wire [1:0] q_id = 0;
 
-    wire show_question = 0;
     always @(posedge w_clk_t) begin
-        if (wait_state==0) begin //初期状態
+        if (state==0) begin //初期状態
             r_st_wdata <= 16'b11111110000;
             if (fivebuttons[0] == 1) begin //スイッチが押されて問題がスタート
-                wait_state <= 1;
+                state <= 1;
             end
-        end else begin //スイッチが押されて問題がスタート
+        end else if (state == 1)begin //スイッチが押されて問題がスタート
             counter <= counter + 1;
+            r_st_wdata <= 16'b11010110000;
+            if (counter == 100000000) begin //1秒経過
+                counter <= 0;
+                state <= 2;
+            end
+            // r_st_wdata <= ((r_x>=28 && r_x<=228 && r_y==128) || (r_x>=168 && r_x<=228 && r_y==356-r_x) || (r_x>=168 && r_x<=228 && r_y==r_x-100)) ? 16'hffff : 16'h0000 ;
+        end else if (state == 2)begin
             r_st_wdata <= ((r_x>=28 && r_x<=228 && r_y==128) || (r_x>=168 && r_x<=228 && r_y==356-r_x) || (r_x>=168 && r_x<=228 && r_y==r_x-100)) ? 16'hffff : 16'h0000 ;
         end
     end
