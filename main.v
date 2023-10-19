@@ -25,7 +25,24 @@ module m_main(w_clk, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, led, SW, fiv
     reg [3:0] state = 0;
     reg [3:0] answer_state = 0;
 
-    // reg [1:0] questions[0:3];
+    reg [3:0] score = 0;
+    reg push_flag = 0;
+    reg sum = 0;
+    reg ans_id = 0;
+
+    wire up;
+    wire left;
+    wire down;
+    wire right;
+    wire center;
+    assign right = fivebuttons[0];
+    assign left = fivebuttons[1];
+    assign down = fivebuttons[2];
+    assign up = fivebuttons[3];
+    assign center = fivebuttons[4];
+
+
+    // reg [15:0] questions[0:3];
     // reg [1:0] questions[0:3] = '{2'b00, 2'b01, 2'b10, 2'b11};
     // reg [1:0] q_id = 0;
     reg [1:0] w_mode = 0;
@@ -35,7 +52,7 @@ module m_main(w_clk, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, led, SW, fiv
     always @(posedge w_clk_t) begin
         if (state==0) begin //初期状態
             r_st_wdata <= 16'b11111110000;
-            if (fivebuttons[0] == 1) begin //スイッチが押されたら次へ
+            if (center == 1) begin //スイッチが押されたら次へ
                 state <= 1;
             end
         end else if (state == 1)begin //
@@ -75,10 +92,23 @@ module m_main(w_clk, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, led, SW, fiv
             r_st_wdata <= ((r_x>=28 && r_x<=228 && r_y==128) || (r_x>=168 && r_x<=228 && r_y==356-r_x) || (r_x>=168 && r_x<=228 && r_y==r_x-100)) ? 16'hffff : 16'h0000 ;
             if (counter == 100000000) begin //1秒経過したら次へ
                 counter <= 0;
-                state <= 5;
+                state <= 6;
                 answer_state <= 1;
             end
-
+        end else if (state == 6 && answer_state==1)begin
+            // 押されたボタンを記憶する
+            r_st_wdata <= 16'b11111110000;
+            sum <= up + left + down + right;
+            if (sum == 1 && push_flag==0) begin
+                r_st_wdata <= 16'b00000001111;
+                push_flag <= 1;
+                score <= (up==1) ? score + 1 : score;
+            end else if (sum == 0 && push_flag==1) begin
+                answer_state <= 2;
+            end
+        end else if (answer_state==2)begin
+            r_st_wdata <= (score==1) ? 16'b111111111111 : 16'b000000000000;
+        end
     end
     /**********************************************************************************/
     reg [7:0] r_x=0, r_y=0;
