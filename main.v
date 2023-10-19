@@ -22,27 +22,63 @@ module m_main(w_clk, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, led, SW, fiv
     /**********************************************************************************/
     
     reg [31:0] counter = 0;
-    reg [3:0]state = 0;
-    // wire [1:0] questions[0:3] = '{2'b00, 2'b01, 2'b10, 2'b11};
-    // wire [1:0] q_id = 0;
+    reg [3:0] state = 0;
+    reg [3:0] answer_state = 0;
+
+    // reg [1:0] questions[0:3];
+    // reg [1:0] questions[0:3] = '{2'b00, 2'b01, 2'b10, 2'b11};
+    // reg [1:0] q_id = 0;
+    reg [1:0] w_mode = 0;
+    // wire [1:0] w_mode = r_SW[1:0];
+    // wire [1:0] w_mode = fivebuttons[1:0];
 
     always @(posedge w_clk_t) begin
         if (state==0) begin //初期状態
             r_st_wdata <= 16'b11111110000;
-            if (fivebuttons[0] == 1) begin //スイッチが押されて問題がスタート
+            if (fivebuttons[0] == 1) begin //スイッチが押されたら次へ
                 state <= 1;
             end
-        end else if (state == 1)begin //スイッチが押されて問題がスタート
+        end else if (state == 1)begin //
             counter <= counter + 1;
-            r_st_wdata <= 16'b11010110000;
-            if (counter == 100000000) begin //1秒経過
+            r_st_wdata <= 16'b11110000000;
+            if (counter == 100000000) begin //1秒経過したら次へ
                 counter <= 0;
                 state <= 2;
             end
-            // r_st_wdata <= ((r_x>=28 && r_x<=228 && r_y==128) || (r_x>=168 && r_x<=228 && r_y==356-r_x) || (r_x>=168 && r_x<=228 && r_y==r_x-100)) ? 16'hffff : 16'h0000 ;
         end else if (state == 2)begin
+            counter <= counter + 1;
+            w_mode <= 0;
             r_st_wdata <= ((r_x>=28 && r_x<=228 && r_y==128) || (r_x>=168 && r_x<=228 && r_y==356-r_x) || (r_x>=168 && r_x<=228 && r_y==r_x-100)) ? 16'hffff : 16'h0000 ;
-        end
+            if (counter == 100000000) begin //1秒経過したら次へ
+                counter <= 0;
+                state <= 3;
+            end
+        end else if (state == 3)begin
+            counter <= counter + 1;
+            w_mode <= 1;
+            r_st_wdata <= ((r_x>=28 && r_x<=228 && r_y==128) || (r_x>=168 && r_x<=228 && r_y==356-r_x) || (r_x>=168 && r_x<=228 && r_y==r_x-100)) ? 16'hffff : 16'h0000 ;
+            if (counter == 100000000) begin //1秒経過したら次へ
+                counter <= 0;
+                state <= 4;
+            end
+        end else if (state == 4)begin
+            counter <= counter + 1;
+            w_mode <= 2;
+            r_st_wdata <= ((r_x>=28 && r_x<=228 && r_y==128) || (r_x>=168 && r_x<=228 && r_y==356-r_x) || (r_x>=168 && r_x<=228 && r_y==r_x-100)) ? 16'hffff : 16'h0000 ;
+            if (counter == 100000000) begin //1秒経過したら次へ
+                counter <= 0;
+                state <= 5;
+            end
+        end else if (state == 5)begin
+            counter <= counter + 1;
+            w_mode <= 3;
+            r_st_wdata <= ((r_x>=28 && r_x<=228 && r_y==128) || (r_x>=168 && r_x<=228 && r_y==356-r_x) || (r_x>=168 && r_x<=228 && r_y==r_x-100)) ? 16'hffff : 16'h0000 ;
+            if (counter == 100000000) begin //1秒経過したら次へ
+                counter <= 0;
+                state <= 5;
+                answer_state <= 1;
+            end
+
     end
     /**********************************************************************************/
     reg [7:0] r_x=0, r_y=0;
@@ -72,9 +108,7 @@ module m_main(w_clk, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, led, SW, fiv
     reg [15:0] r_raddr = 0;
     always @(posedge w_clk_t) r_raddr <= w_raddr;
     always @(posedge w_clk_t) r_rdata <= vmem[r_raddr];    
-    wire [1:0] w_mode = 0;
-    // wire [1:0] w_mode = r_SW[1:0];
-    // wire [1:0] w_mode = fivebuttons[1:0];
+
     m_st7789_disp disp0 (w_clk_t, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, w_raddr, r_rdata, w_mode);                               
 endmodule
 
