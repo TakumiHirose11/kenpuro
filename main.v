@@ -45,6 +45,7 @@ module m_main(w_clk, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, led, SW, fiv
     reg [3:0] score = 0;
     reg push_flag = 0;
     reg true_flag = 0;
+    reg disp_flag = 0;
 
     reg right;
     reg left;
@@ -87,39 +88,37 @@ module m_main(w_clk, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, led, SW, fiv
             r_st_wdata <= 16'hfff0;
             if (sum == 1 && push_flag==0) begin
                 push_flag <= 1;
+                disp_flag <= 1;
                 true_flag <= ((up && questions[ans_id]==0) || (left && questions[ans_id]==1) || (down && questions[ans_id]==2) || (right && questions[ans_id]==3));
-            end else if (sum >= 1 && push_flag == 1) begin
+            end else if (sum >= 1 && push_flag && disp_flag) begin
                 r_st_wdata <= (true_flag) ? 16'h0f00: 16'hf000;
+                disp_flag <= 0;
+            end else if (sum >= 1 && push_flag && disp_flag==0) begin
                 score <= (true_flag) ? score + 1 : score;
+                true_flag <= 0;
             end else if (sum == 0 && push_flag==1) begin
                 counter <= counter + 1;
                 if (counter == 20000000) begin //1秒経過したら次へ
                     counter <= 0;
                     push_flag <= 0;
                     ans_id <= ans_id + 1;
-                    true_flag <= 0;
                     answer_state <= answer_state + 1;
                 end
             end
         end else if (answer_state==4)begin
             counter <= counter + 1;
-            if (counter == 100000000) begin //1秒経過したら次へ
-                r_st_wdata <= (score>=1) ? 16'h0f00 : 16'hf000;
+            if (counter == 100000000) begin //全問正解したかどうか
+                r_st_wdata <= (score==4) ? 16'h0f00 : 16'hf000;
             end
-            if (counter == 200000000) begin //1秒経過したら次へ
-                r_st_wdata <= (score>=2) ? 16'h0f00 : 16'hf000;
-            end
-            if (counter == 300000000) begin //1秒経過したら次へ
-                r_st_wdata <= (score>=3) ? 16'h0f00 : 16'hf000;
-            end
-            if (counter == 400000000) begin //1秒経過したら次へ
-                r_st_wdata <= (score>=4) ? 16'h0f00 : 16'hf000;
-            end
-            if (counter == 500000000) begin //1秒経過したら次へ
-                r_st_wdata <= (score>=0) ? 16'h0f00 : 16'hf000;
-            end
-            if (counter == 600000000) begin //1秒経過したら次へ
-                r_st_wdata <= (score>=0) ? 16'h0f00 : 16'hf000;
+            if (counter == 200000000) begin 
+                //全て初期化
+                r_st_wdata <= 16'hfff0;
+                counter <= 0;
+                state <= 0;
+                answer_state <= 0;
+                q_id <= 0;
+                ans_id <= 0;
+                score <= 0;
             end
         end
     end
