@@ -19,95 +19,108 @@ module m_main(w_clk, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, led, SW, fiv
     wire w_clk_t = w_clk;
     reg [15:0] r_SW=0;
     always @(posedge w_clk_t) r_SW <= SW;
+    reg [1:0] w_mode = 0;
     /**********************************************************************************/
-    
+    reg [1:0] questions [0:3];
+    /*
+    00 : up
+    01 : left
+    10 : down
+    11 : right
+    */
+    initial begin
+        questions[0] <= 2'b00;
+        questions[1] <= 2'b01; 
+        questions[2] <= 2'b10;
+        questions[3] <= 2'b11;
+    end
+
     reg [31:0] counter = 0;
     reg [3:0] state = 0;
     reg [3:0] answer_state = 0;
 
+    reg sum = 0;
+    reg [1:0]q_id = 0;
+    reg [1:0]ans_id = 0;
     reg [3:0] score = 0;
     reg push_flag = 0;
-    reg sum = 0;
-    reg ans_id = 0;
+    reg true_flag = 0;
 
-    wire up;
-    wire left;
-    wire down;
-    wire right;
-    wire center;
-    assign right = fivebuttons[0];
-    assign left = fivebuttons[1];
-    assign down = fivebuttons[2];
-    assign up = fivebuttons[3];
-    assign center = fivebuttons[4];
-
-
-    // reg [15:0] questions[0:3];
-    // reg [1:0] questions[0:3] = '{2'b00, 2'b01, 2'b10, 2'b11};
-    // reg [1:0] q_id = 0;
-    reg [1:0] w_mode = 0;
-    // wire [1:0] w_mode = r_SW[1:0];
-    // wire [1:0] w_mode = fivebuttons[1:0];
-
+    reg right;
+    reg left;
+    reg down;
+    reg up;
+    reg center;
+    always @(posedge w_clk_t) begin
+        right <= fivebuttons[0];
+        left <= fivebuttons[1];
+        down <= fivebuttons[2];
+        up <= fivebuttons[3];
+        center <= fivebuttons[4];
+        sum <= up + left + down + right;
+    end
+    /**********************************************************************************/
     always @(posedge w_clk_t) begin
         if (state==0) begin //初期状態
-            r_st_wdata <= 16'b11111110000;
+            r_st_wdata <= 16'hfff0;
             if (center == 1) begin //スイッチが押されたら次へ
-                state <= 1;
+                state <= state + 1;
             end
-        end else if (state == 1)begin //
+        end else if (state == 1)begin //待機時間(1s)
             counter <= counter + 1;
-            r_st_wdata <= 16'b11110000000;
+            r_st_wdata <= 16'hff00;
             if (counter == 100000000) begin //1秒経過したら次へ
                 counter <= 0;
-                state <= 2;
+                state <= state + 1;
             end
-        end else if (state == 2)begin
+        end else if (state <= 5)begin //問1-4
             counter <= counter + 1;
-            w_mode <= 0;
+            w_mode <= questions[q_id];
             r_st_wdata <= ((r_x>=28 && r_x<=228 && r_y==128) || (r_x>=168 && r_x<=228 && r_y==356-r_x) || (r_x>=168 && r_x<=228 && r_y==r_x-100)) ? 16'hffff : 16'h0000 ;
             if (counter == 100000000) begin //1秒経過したら次へ
                 counter <= 0;
-                state <= 3;
+                state <= state + 1;
+                q_id <= q_id + 1;
             end
-        end else if (state == 3)begin
-            counter <= counter + 1;
-            w_mode <= 1;
-            r_st_wdata <= ((r_x>=28 && r_x<=228 && r_y==128) || (r_x>=168 && r_x<=228 && r_y==356-r_x) || (r_x>=168 && r_x<=228 && r_y==r_x-100)) ? 16'hffff : 16'h0000 ;
-            if (counter == 100000000) begin //1秒経過したら次へ
-                counter <= 0;
-                state <= 4;
-            end
-        end else if (state == 4)begin
-            counter <= counter + 1;
-            w_mode <= 2;
-            r_st_wdata <= ((r_x>=28 && r_x<=228 && r_y==128) || (r_x>=168 && r_x<=228 && r_y==356-r_x) || (r_x>=168 && r_x<=228 && r_y==r_x-100)) ? 16'hffff : 16'h0000 ;
-            if (counter == 100000000) begin //1秒経過したら次へ
-                counter <= 0;
-                state <= 5;
-            end
-        end else if (state == 5)begin
-            counter <= counter + 1;
-            w_mode <= 3;
-            r_st_wdata <= ((r_x>=28 && r_x<=228 && r_y==128) || (r_x>=168 && r_x<=228 && r_y==356-r_x) || (r_x>=168 && r_x<=228 && r_y==r_x-100)) ? 16'hffff : 16'h0000 ;
-            if (counter == 100000000) begin //1秒経過したら次へ
-                counter <= 0;
-                state <= 6;
-                answer_state <= 1;
-            end
-        end else if (state == 6 && answer_state==1)begin
+        end else if (answer_state<=3)begin //解答1-4
             // 押されたボタンを記憶する
-            r_st_wdata <= 16'b11111110000;
-            sum <= up + left + down + right;
+            r_st_wdata <= 16'hfff0;
             if (sum == 1 && push_flag==0) begin
-                r_st_wdata <= 16'b00000001111;
                 push_flag <= 1;
-                score <= (up==1) ? score + 1 : score;
+                true_flag <= ((up && questions[ans_id]==0) || (left && questions[ans_id]==1) || (down && questions[ans_id]==2) || (right && questions[ans_id]==3));
+            end else if (sum >= 1 && push_flag == 1) begin
+                r_st_wdata <= (true_flag) ? 16'h0f00: 16'hf000;
+                score <= (true_flag) ? score + 1 : score;
             end else if (sum == 0 && push_flag==1) begin
-                answer_state <= 2;
+                counter <= counter + 1;
+                if (counter == 20000000) begin //1秒経過したら次へ
+                    counter <= 0;
+                    push_flag <= 0;
+                    ans_id <= ans_id + 1;
+                    true_flag <= 0;
+                    answer_state <= answer_state + 1;
+                end
             end
-        end else if (answer_state==2)begin
-            r_st_wdata <= (score==1) ? 16'b111111111111 : 16'b000000000000;
+        end else if (answer_state==4)begin
+            counter <= counter + 1;
+            if (counter == 100000000) begin //1秒経過したら次へ
+                r_st_wdata <= (score>=1) ? 16'h0f00 : 16'hf000;
+            end
+            if (counter == 200000000) begin //1秒経過したら次へ
+                r_st_wdata <= (score>=2) ? 16'h0f00 : 16'hf000;
+            end
+            if (counter == 300000000) begin //1秒経過したら次へ
+                r_st_wdata <= (score>=3) ? 16'h0f00 : 16'hf000;
+            end
+            if (counter == 400000000) begin //1秒経過したら次へ
+                r_st_wdata <= (score>=4) ? 16'h0f00 : 16'hf000;
+            end
+            if (counter == 500000000) begin //1秒経過したら次へ
+                r_st_wdata <= (score>=0) ? 16'h0f00 : 16'hf000;
+            end
+            if (counter == 600000000) begin //1秒経過したら次へ
+                r_st_wdata <= (score>=0) ? 16'h0f00 : 16'hf000;
+            end
         end
     end
     /**********************************************************************************/
@@ -123,12 +136,6 @@ module m_main(w_clk, st7789_SDA, st7789_SCL, st7789_DC, st7789_RES, led, SW, fiv
     reg [15:0] r_st_wdata = 0; // cam_dout;
     always @(posedge w_clk_t) r_st_wadr  <= {r_y, r_x};
     always @(posedge w_clk_t) r_st_we    <= 1; 
-    // この中にif文を作れば状態遷移を画面で表示できる
-    // always @(posedge w_clk_t) begin
-    //     // 矢印を書く
-    //     r_st_wdata <= (r_SW[0]==1)? 16'b11111100000 : ((r_x>=28 && r_x<=228 && r_y==128) || (r_x>=168 && r_x<=228 && r_y==356-r_x) || (r_x>=168 && r_x<=228 && r_y==r_x-100)) ? 16'hffff : 16'h0000 ;
-
-    // end
     
     reg [15:0] vmem [0:65535]; // video memory, 256 x 256 (65,536) x 12bit color
     always @(posedge w_clk_t) if(r_st_we) vmem[r_st_wadr] <= r_st_wdata;
